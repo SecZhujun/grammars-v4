@@ -1,0 +1,145 @@
+grammar Union_All;
+					//general structure
+stat:insert_part select_clause ';';
+select_clause: select_part from_part join_part+? ;
+
+insert_part: 'INSERT INTO' colume_name '('  (filed_name ',')*  filed_name ')';
+
+select_part:'SELECT' (filed_name ',')* filed_name;
+
+from_part
+	:'FROM' '(' select_distinct_clause  ')' other_name?
+	|'FROM' '(' select_clause ('UNION ALL' select_clause)*	')' 
+	|'FROM'  colume_name other_name? 
+	;
+		 
+select_distinct_clause:  'SELECT DISTINCT' (filed_name ',')*  filed_name  'FROM' filed_name join_part+;
+
+
+join_part
+	:left_join
+	|on_join
+	|and_join
+	|where_join
+	;	
+			//funtion_part
+function				
+		:sum_case_function
+		|sum_function
+		|to_char_function
+		|nlv_function
+		|decode_function
+		|substr_function
+		|over_function
+		|replace_function
+		|sysdate_function
+		|abs_function
+		|length_function
+		|substr_multi_function
+		;
+
+decode_function	
+	: 'DECODE' '(' filed_name ',' (VALUE ',' T_VALUE)+ ',' filed_name ')'  
+	;
+substr_multi_function:'SUBSTR' '(' function ',' INT ',' function ')';
+substr_function
+	: 'SUBSTR' '(' expr ',' INT ',' expr ')'
+	; 
+sum_case_function: 'SUM' '(' case_clause ')' over_function? ;	
+sum_function
+	: 'SUM'	'(' filed_name ')' over_function?
+	;
+over_function
+		: 'OVER' '(' 'PARTITION' 'BY' (NAME ',' )* final_name ')' other_name?;		
+abs_function		
+	:'ABS' '('   expression  ')' ;
+length_function
+		:'LENGTH' '(' CHAR_STRING  ')'
+		|'LENGTH' '(' NAME  ')'
+		|'LENGTH' '(' replace_function ')'
+		;
+sysdate_function:'SYSDATE' NAME;
+to_char_function: 'TO_CHAR' '(' NAME ',' STRING ')' ;
+replace_function	
+	:'REPLACE' '(' filed_name ',' STRING ',' STRING ')';
+nlv_function
+	:'NLV' '(' expression|NAME ',' INT ')' 
+	;
+	
+filed_name
+	:case_clause
+	|NAME OP NAME
+	|function 
+	|'0' 
+	|NAME `
+	|'NULL'
+	|STRING
+	;
+			//element
+expr
+	:function
+	|NAME
+	|INT
+	;
+case_clause
+		:'CASE' when_block+ 'ELSE'  NAME 'END'   
+		|'CASE' when_block+ 'ELSE'  filed_name 'END'   
+		;
+	
+when_block
+	: 'WHEN' condition 'THEN' expression
+	| 'WHEN' condition 'THEN' function
+	;
+condition
+		: NAME 'LIKE' STRING
+		| NAME '=' QUOTE_VALUE
+		; 
+
+expression
+		:function '-' function
+		|NAME OP NAME
+		;
+		
+other_name:NAME;
+
+final_name:NAME;
+
+left_join:'LEFT' 'JOIN'	NAME other_name?;
+on_join: 'ON' equal_expression;
+and_join
+		: 'AND' function '='  function
+		| 'AND' function '='  NAME
+		| 'AND' STRING  '||'  NAME
+		| 'AND' NAME '=' NAME
+		| 'AND' function '=' INT
+		| 'AND' NAME 'IS NOT NULL'
+		| 'AND' NAME 'LIKE' STRING
+		;
+where_join: 'WHERE' equal_expression;
+
+equal_expression: filed_name '=' filed_name ;
+
+
+colume_name:NAME;
+					//lex
+VALUE: 'NULL';
+T_VALUE
+	:'0'
+	|STRING
+	;
+	
+OP:'+'|'-'|'*'|'/';
+QUOTE_VALUE: '\''  INT '\'' ;
+
+INT:DIGIT+;
+fragment DIGIT:[0-9];
+NAME:([0-9]|[a-zA-Z]|'_'|'.')+;
+
+STRING: '\'' .*?   '\'' ;
+CHAR_STRING
+	:'\'' (~('\''| '\r'| '\n')| '\'' '\''|NEWLINE|'%')*  '\''
+	;
+
+
+WS:[ \r\n\t]   ->skip;
+NEWLINE: '\r';	
